@@ -135,8 +135,10 @@ def integrate_run(root, measurement_name, peak_fit=None, peak_guess=None):
                                             unit="q_nm^-1",
                                             mask=mask,
                                             flat=flatfield)
-                    bgr = baseline_als(result[1], 1e6, 0.01)
-                    bgr = 0
+                    if flatfield:
+                        bgr = 0
+                    else:
+                        bgr = baseline_als(result[1], 1e6, 0.01)
                     res = result[1] - bgr
                     q = result[0]
                     patterns.append(res)
@@ -146,7 +148,6 @@ def integrate_run(root, measurement_name, peak_fit=None, peak_guess=None):
                 df = None
             else:
                 df = pd.DataFrame(patterns, columns=q)
-                print(df)
             progress(len(run), len(run), 'run %d done' % idx)
             _all_patterns.append(df)
         else:
