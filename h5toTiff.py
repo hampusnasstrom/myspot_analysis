@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import hdf5plugin  # Needed to decompress the LZ4 compression
 import fabio
@@ -8,6 +8,15 @@ import numpy as np
 
 
 def h5s_to_average_tiff(paths: List[str], threshold=None):
+    """
+    Average and convert LZW compressed hdf5 files to tiff with optional threshold
+
+    :param paths: List of full paths to files
+    :type paths: List[str]
+    :param threshold: Optional threshold
+    :type: int or float
+    :return: None
+    """
     data = 0
     for path in paths:
         file = fabio.open(path)
@@ -19,7 +28,16 @@ def h5s_to_average_tiff(paths: List[str], threshold=None):
     tifffile.imwrite(paths[0][:-22] + '_averaged.tiff', data)
 
 
-def h5_to_tiff(path: str, threshold=None):
+def h5_to_tiff(path: str, threshold: Union[int, float] = None):
+    """
+    Convert LZW compressed hdf5 file to tiff with optional threshold
+
+    :param path: Full path to file
+    :type path: str
+    :param threshold: Optional threshold
+    :type: int or float
+    :return: None
+    """
     file = fabio.open(path)
     data = file.data
     if threshold:
