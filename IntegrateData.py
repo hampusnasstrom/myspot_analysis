@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Tuple, List
 
 import pandas as pd
 import numpy as np
@@ -69,7 +70,37 @@ def gauss(x, *p):
     return p[0] * np.exp(-np.power(x - p[1], 2) / (2 * np.power(p[2], 2)))
 
 
-def integrate_run(root, measurement_name, peak_fit=None, peak_guess=None):
+def extend_mesh(x: np.ndarray) -> np.ndarray:
+    """
+    Function for extending mesh from center points to edge points
+
+    :param x: Mesh to extend
+    :type x: numpy.ndarray
+    :return: The extended mesh
+    :rtype: numpy.ndarray
+    """
+    x_delta = (np.diff(x)) / 2
+    x_extended = x[:-1] + x_delta
+    x_extended = np.insert(x_extended, 0, x[0] - x_delta[0])
+    x_extended = np.append(x_extended, x[-1] + x_delta[-1])
+    return x_extended
+
+
+def integrate_run(root: str, measurement_name: str) -> Tuple[List[pd.DataFrame], List[pd.DataFrame]]:
+    """
+    Function for integrating one measurement from the mySpot beamline.
+    Measurement needs to be in the original folder structure from the beamline with both eiger folder and spec file.
+    Additionally there needs to be a poni file named "measurement_name".poni in the top measurement directory with the
+    spec file. Optionally a mask file named "measurement_name"_mask.edf and/or a flatfield named
+    "measurement_name"_flatfield.tiff can also be placed here.
+
+    :param root: Path to folder where all measurements are, i.e. session folder from the beamline
+    :type root: str
+    :param measurement_name: Name of the measurement to be integrated
+    :type measurement_name: str
+    :return: List of dataframes with spec data and dataframes with integrated data for each run
+    :rtype: Tuple[List[pandas.DataFrame], List[pandas.DataFrame]]
+    """
     ai = pyFAI.load(os.path.join(root,
                                  measurement_name,
                                  measurement_name + '.poni'))
@@ -135,10 +166,10 @@ def integrate_run(root, measurement_name, peak_fit=None, peak_guess=None):
                                             unit="q_nm^-1",
                                             mask=mask,
                                             flat=flatfield)
-                    if flatfield:
-                        bgr = 0
-                    else:
+                    if flatfield is None:
                         bgr = baseline_als(result[1], 1e6, 0.01)
+                    else:
+                        bgr = 0
                     res = result[1] - bgr
                     q = result[0]
                     patterns.append(res)
@@ -169,10 +200,19 @@ if __name__ == "__main__":
             sys.exit('ERROR: Output folder already exists.')
         for idx in range(len(spec_data)):
             if all_patterns[idx] is not None:
-                all_patterns[idx].to_csv(os.path.join(save_path, sys.argv[2] + '_run%d_patterns.csv' % idx))
-                spec_data[idx].to_csv(os.path.join(save_path, sys.argv[2] + '_run%d_metadata.csv' % idx))
+                all_patterns[idx].to_csv(os.path.join(save_path, sys.argv[2] + '_run%d_patterns.csv' % (idx + 1)))
+                spec_data[idx].to_csv(os.path.join(save_path, sys.argv[2] + '_run%d_metadata.csv' % (idx + 1)))
                 import matplotlib.pyplot as plt
 
                 fig, ax = plt.subplots()
-                ax.pcolormesh(all_patterns[idx].values)
-                fig.savefig(os.path.join(save_path, sys.argv[2] + '_run%d_heatmap.png' % idx),dpi=600)
+                q = extend_mesh(all_patterns[idx].columns.values.astype(float))
+                if len(all_patterns[idx].index.values) == 1:
+                    img_number = np.array([0.5, 1.5])
+                else:
+                    img_number = extend_mesh(all_patterns[idx].index.values.astype(int) + 1)
+                ax.pcolormesh(img_number, q, all_patterns[idx].values.T)
+                ax.set_xlabel('Image number')
+                ax.set_ylabel(r'Scattering vector $q$ / nm$^{-1}$')
+                ax.set_title(sys.argv[2] + ' run %d' % (idx + 1))
+                fig.tight_layout()
+                fig.savefig(os.path.join(save_path, sys.argv[2] + '_run%d_heatmap.png' % (idx + 1)), dpi=300)
