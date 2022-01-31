@@ -12,7 +12,7 @@ class DateTimeEncoder(json.JSONEncoder):
             return super().default(z)
 
 
-def read_spec(file_path: str) -> Tuple[dict, List[dict, pd.DataFrame]]:
+def read_spec(file_path: str) -> Tuple[dict, List[Tuple[dict, pd.DataFrame]]]:
     # https://certif.com/downloads/css_docs/spec_man.pdf
     with open(file_path, 'r') as file_handle:
         file_info = {
@@ -32,7 +32,7 @@ def read_spec(file_path: str) -> Tuple[dict, List[dict, pd.DataFrame]]:
             elif line.startswith('#E'):
                 file_info["epoch"] = int(line.split()[1])
             elif line.startswith('#D'):
-                file_info["datetime"] = datetime.strptime(line, '#D %a %b %d %H:%M:%S %Y\n')
+                file_info["datetime"] = datetime.strptime(line[3:27], "%a %b %d %H:%M:%S %Y")
             elif line.startswith("#O"):
                 file_info["motors"] += line.split()[1:]
             elif line.startswith("#C"):

@@ -109,16 +109,20 @@ def integrate_run(root: str, measurement_name: str) -> Tuple[List[pd.DataFrame],
                                             measurement_name,
                                             measurement_name + '_mask.edf'))
         mask = mask_file.data
+        print("Mask found.")
     except FileNotFoundError:
         mask = None
+        print("No mask found.")
     try:
         flatfield_file = fabio.open(os.path.join(root,
                                                  measurement_name,
                                                  measurement_name + '_flatfield.tiff'))
         flatfield = flatfield_file.data
         flatfield[flatfield > 1000] = 1
+        print("Flatfield found.")
     except FileNotFoundError:
         flatfield = None
+        print("No flatfield found.")
 
     with open(os.path.join(root, measurement_name, measurement_name + '.spec'), "r") as fi:
         _spec_data = []
@@ -172,6 +176,7 @@ def integrate_run(root: str, measurement_name: str) -> Tuple[List[pd.DataFrame],
                         bgr = 0
                     res = result[1] - bgr
                     q = result[0]
+                    res[np.isnan(res)] = np.nan
                     patterns.append(res)
                 except FileNotFoundError:
                     patterns.append(None)
@@ -187,6 +192,7 @@ def integrate_run(root: str, measurement_name: str) -> Tuple[List[pd.DataFrame],
 
 
 if __name__ == "__main__":
+    # First sys arg is path to all measurements, second is measurement name
     if len(sys.argv) < 2:
         sys.exit('ERROR: Not enough input parameters.')
     elif len(sys.argv) > 3:
